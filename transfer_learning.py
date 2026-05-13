@@ -202,3 +202,64 @@ val_loader = DataLoader(
 
 )
 
+def train_one_epoch(model, dataloader, criterion, optimizer, device):
+
+    """
+    Train the model for one epoch.
+
+    Args:
+        model: PyTorch model to train
+
+        dataloader: Training data loader
+
+        criterion: Loss function
+
+        optimizer: Optimizer (e.g., Adam, SGD)
+
+        device: Device to use (cuda/mps/cpu)
+
+    Returns:
+        Tuple of (average_loss, accuracy)
+
+    """
+    model.train()  # Set model to training mode (enables dropout, batch norm updates)
+
+    running_loss = 0.0
+
+    correct = 0
+
+    total = 0
+
+    for inputs, labels in dataloader:
+
+        inputs, labels = inputs.to(device), labels.to(device)
+
+        
+
+        optimizer.zero_grad()           # Clear previous gradients
+
+        outputs = model(inputs)         # Forward pass
+
+        loss = criterion(outputs, labels)
+
+        loss.backward()                 # Compute gradients
+
+        optimizer.step()                # Update weights
+
+        
+
+        running_loss += loss.item() * inputs.size(0)
+
+        _, predicted = outputs.max(1)
+
+        total += labels.size(0)
+
+        correct += predicted.eq(labels).sum().item()
+
+    
+
+    epoch_loss = running_loss / total
+
+    epoch_acc = 100. * correct / total
+
+    return epoch_loss, epoch_acc
