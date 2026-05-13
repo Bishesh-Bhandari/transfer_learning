@@ -53,3 +53,152 @@ def get_device():
 device = get_device()
 
 
+def set_seed(seed=42):
+
+    """Set random seeds for reproducibility across all libraries."""
+
+    random.seed(seed)
+
+    np.random.seed(seed)
+
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+
+        torch.cuda.manual_seed(seed)
+
+        torch.cuda.manual_seed_all(seed)
+
+    # For deterministic behavior (may slow down training)
+
+    torch.backends.cudnn.deterministic = True
+
+    torch.backends.cudnn.benchmark = False
+
+ 
+
+set_seed(42)
+
+# ImageNet normalization values (used for all pretrained models)
+
+# Mean and SD of pixel values across all ImageNet images for each color channel (R, G, B)
+
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
+ 
+
+# Transforms for training data (with augmentation)
+
+train_transforms = transforms.Compose([
+
+    transforms.Resize(224),              # Resize to 224x224 for pretrained models
+
+    transforms.RandomHorizontalFlip(),   # Simple augmentation
+
+    transforms.ToTensor(),               # Convert to tensor [0, 1]
+
+    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)  # ImageNet normalization
+
+])
+
+ 
+
+# Transforms for validation/test data (no augmentation)
+
+val_transforms = transforms.Compose([
+
+    transforms.Resize(224),
+
+    transforms.ToTensor(),
+
+    transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+
+])
+
+
+# Download and prepare datasets
+
+print("Downloading CIFAR-10 dataset...")
+
+train_dataset = datasets.CIFAR10(
+
+    root='./data',
+
+    train=True,
+
+    download=True,
+
+    transform=train_transforms
+
+)
+
+ 
+
+val_dataset = datasets.CIFAR10(
+
+    root='./data',
+
+    train=False,
+
+    download=True,
+
+    transform=val_transforms
+
+)
+
+ 
+
+# CIFAR-10 class names
+
+class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer',
+
+               'dog', 'frog', 'horse', 'ship', 'truck']
+
+num_classes = len(class_names)
+
+ 
+
+print(f"Training samples: {len(train_dataset)}")
+
+print(f"Validation samples: {len(val_dataset)}")
+
+print(f"Number of classes: {num_classes}")
+
+BATCH_SIZE = 32
+
+ 
+
+# Note: num_workers=0 for Windows compatibility; increase on Linux/Mac for speed
+
+train_loader = DataLoader(
+
+    train_dataset,
+
+    batch_size=BATCH_SIZE,
+
+    shuffle=True,           # Shuffle training data each epoch
+
+    num_workers=0,
+
+    pin_memory=True if device.type == 'cuda' else False
+
+)
+
+ 
+
+val_loader = DataLoader(
+
+    val_dataset,
+
+    batch_size=BATCH_SIZE,
+
+    shuffle=False,          # No need to shuffle validation data
+
+    num_workers=0,
+
+    pin_memory=True if device.type == 'cuda' else False
+
+)
+
