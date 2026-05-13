@@ -269,10 +269,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
 def evaluate(model, dataloader, criterion, device):
 
     """
-
     Evaluate the model on validation/test data.
-
-
 
     Args:
         model: PyTorch model to evaluate
@@ -281,7 +278,6 @@ def evaluate(model, dataloader, criterion, device):
         device: Device to use
 
     Returns:
-
         Tuple of (average_loss, accuracy)
 
     """
@@ -406,5 +402,66 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
 
     # Load best model weights
     model.load_state_dict(best_model_weights)
-    
+
     return model, history
+
+
+def plot_curves(history, title="Training History"):
+
+    """
+
+    Plot training and validation loss/accuracy curves.
+
+    
+
+    Args:
+
+        history: Dictionary with 'train_loss', 'val_loss', 'train_acc', 'val_acc'
+
+        title: Plot title
+
+    """
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+
+    
+
+    # Loss plot
+
+    axes[0].plot(history['train_loss'], label='Train Loss', marker='o')
+
+    axes[0].plot(history['val_loss'], label='Val Loss', marker='s')
+
+    axes[0].set_xlabel('Epoch')
+
+    axes[0].set_ylabel('Loss')
+
+    axes[0].set_title(f'{title} - Loss')
+
+    axes[0].legend()
+
+    axes[0].grid(True)
+
+    
+
+    # Accuracy plot
+
+    axes[1].plot(history['train_acc'], label='Train Acc', marker='o')
+
+    axes[1].plot(history['val_acc'], label='Val Acc', marker='s')
+
+    axes[1].set_xlabel('Epoch')
+
+    axes[1].set_ylabel('Accuracy (%)')
+
+    axes[1].set_title(f'{title} - Accuracy')
+
+    axes[1].legend()
+
+    axes[1].grid(True)
+
+    
+
+    plt.tight_layout()
+
+    plt.show()
