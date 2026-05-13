@@ -263,3 +263,148 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
     epoch_acc = 100. * correct / total
 
     return epoch_loss, epoch_acc
+
+
+
+def evaluate(model, dataloader, criterion, device):
+
+    """
+
+    Evaluate the model on validation/test data.
+
+
+
+    Args:
+        model: PyTorch model to evaluate
+        dataloader: Validation/test data loader
+        criterion: Loss function
+        device: Device to use
+
+    Returns:
+
+        Tuple of (average_loss, accuracy)
+
+    """
+    model.eval()  # Set model to evaluation mode (disables dropout, fixes batch norm)
+    running_loss = 0.0
+    correct = 0
+    total = 0
+
+    with torch.no_grad():  # Disable gradient computation for efficiency
+
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+
+            running_loss += loss.item() * inputs.size(0)
+
+            _, predicted = outputs.max(1)
+            total += labels.size(0)
+            correct += predicted.eq(labels).sum().item()
+
+            epoch_loss = running_loss / total
+
+    epoch_acc = 100. * correct / total
+
+    return epoch_loss, epoch_acc
+
+
+
+def train_model(model, train_loader, val_loader, criterion, optimizer, 
+
+                device, num_epochs, scheduler=None, model_name="Model"):
+
+    """
+
+    Complete training loop with validation and history tracking.
+
+    
+
+    Returns:
+
+        Tuple of (trained_model, history_dict)
+
+    """
+
+    # History dictionary to store loss and accuracy for each epoch
+
+    history = {
+
+        'train_loss': [], 'train_acc': [],
+
+        'val_loss': [], 'val_acc': []
+
+    }
+
+    
+
+    best_acc = 0.0
+
+    best_model_weights = copy.deepcopy(model.state_dict())
+
+    
+
+    print(f"\n{'='*60}")
+
+    print(f"Training: {model_name}")
+
+    print(f"{'='*60}")
+
+    
+
+    start_time = time.time()
+
+    for epoch in range(num_epochs):
+
+        epoch_start = time.time()
+
+        # Training phase
+
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, criterion, optimizer, device
+        )
+
+        # Validation phase
+        val_loss, val_acc = evaluate(model, val_loader, criterion, device)
+
+        # Update learning rate if scheduler is provided
+        if scheduler:
+            scheduler.step()
+
+# Save history
+
+        history['train_loss'].append(train_loss)
+        history['train_acc'].append(train_acc)
+        history['val_loss'].append(val_loss)
+        history['val_acc'].append(val_acc)
+
+        # Save best model
+        if val_acc > best_acc:
+
+            best_acc = val_acc
+
+            best_model_weights = copy.deepcopy(model.state_dict())
+
+        
+
+        epoch_time = time.time() - epoch_start
+
+        print(f"Epoch {epoch+1:2d}/{num_epochs} | "
+
+              f"Train Loss: {train_loss:.4f} Acc: {train_acc:.2f}% | "
+
+              f"Val Loss: {val_loss:.4f} Acc: {val_acc:.2f}% | "
+
+              f"Time: {epoch_time:.1f}s")
+
+    total_time = time.time() - start_time
+
+    print(f"\nTraining complete in {total_time/60:.1f} minutes")
+
+    print(f"Best validation accuracy: {best_acc:.2f}%")
+
+    # Load best model weights
+    model.load_state_dict(best_model_weights)
+    
+    return model, history
