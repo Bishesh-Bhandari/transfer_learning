@@ -465,3 +465,165 @@ def plot_curves(history, title="Training History"):
     plt.tight_layout()
 
     plt.show()
+
+def show_predictions(model, dataloader, class_names, device, num_images=8):
+
+    """
+    Display sample images with predicted and true labels.
+    """
+
+    model.eval()
+
+    images_shown = 0
+
+    fig, axes = plt.subplots(2, 4, figsize=(12, 6))
+
+    axes = axes.flatten()
+
+    
+
+    # Denormalize for display
+
+    mean = torch.tensor(IMAGENET_MEAN).view(3, 1, 1)
+
+    std = torch.tensor(IMAGENET_STD).view(3, 1, 1)
+
+    with torch.no_grad():
+
+        for inputs, labels in dataloader:
+
+            inputs, labels = inputs.to(device), labels.to(device)
+
+            outputs = model(inputs)
+
+            _, predicted = outputs.max(1)
+
+            
+
+            for i in range(inputs.size(0)):
+
+                if images_shown >= num_images:
+
+                    break
+
+                
+
+                # Denormalize image
+
+                img = inputs[i].cpu() * std + mean
+
+                img = img.permute(1, 2, 0).numpy()
+
+                img = np.clip(img, 0, 1)
+
+                true_label = class_names[labels[i]]
+
+                pred_label = class_names[predicted[i]]
+
+                color = 'green' if true_label == pred_label else 'red'
+
+                
+
+                axes[images_shown].imshow(img)
+
+                axes[images_shown].set_title(f'True: {true_label}\nPred: {pred_label}', 
+
+                                             color=color, fontsize=10)
+
+                axes[images_shown].axis('off')
+
+                images_shown += 1
+
+            
+
+            if images_shown >= num_images:
+
+                break
+
+    
+
+    plt.tight_layout()
+
+    plt.show()
+
+# Load pretrained ResNet18
+
+# weights=IMAGENET1K_V1 loads the ImageNet pretrained weights
+
+feature_extractor = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+
+ 
+
+# Examine the model structure (helps understand what to modify)
+
+print("Original ResNet18 final layer (fc):")
+
+print(feature_extractor.fc)
+
+# STEP 2: Replace the final fully connected layer
+
+# ResNet18's fc layer expects 512 input features, outputs 1000 (ImageNet classes)
+
+# We replace it with a new layer that outputs num_classes (10 for CIFAR-10)
+
+num_features = feature_extractor.fc.in_features  # Get input size (512 for ResNet18)
+
+feature_extractor.fc = nn.Linear(num_features, num_classes)  # New layer, trainable by default
+
+ 
+
+print(f"New final layer: Linear({num_features}, {num_classes})")
+
+
+# Move model to device
+
+feature_extractor = feature_extractor.to(device)
+
+ 
+
+# Count trainable vs total parameters
+
+total_params = sum(p.numel() for p in feature_extractor.parameters())
+
+trainable_params = sum(p.numel() for p in feature_extractor.parameters() if p.requires_grad)
+
+print(f"Total parameters: {total_params:,}")
+
+print(f"Trainable parameters: {trainable_params:,} ({100*trainable_params/total_params:.2f}%)")
+
+# STEP 3: Set up optimizer - only optimize the new head (fc layer)
+
+# Since other layers are frozen, we only need to pass the trainable parameters
+
+criterion = nn.CrossEntropyLoss()
+
+optimizer_fe = optim.Adam(feature_extractor.fc.parameters(), lr=0.001)
+
+ 
+
+# Train the feature extractor
+
+FEATURE_EXTRACTOR_EPOCHS = 5
+
+ 
+
+feature_extractor, fe_history = train_model(
+
+    model=feature_extractor,
+
+    train_loader=train_loader,
+
+    val_loader=val_loader,
+
+    criterion=criterion,
+
+    optimizer=optimizer_fe,
+
+    device=device,
+
+    num_epochs=FEATURE_EXTRACTOR_EPOCHS,
+
+    model_name="ResNet18 Feature Extractor (Frozen)"
+
+)
+
